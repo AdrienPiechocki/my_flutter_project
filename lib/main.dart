@@ -4,6 +4,7 @@ import 'package:flutter_app/colors.dart';
 import 'package:flutter_app/app_icons.dart';
 import 'package:flutter_app/res/app_images.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:share_plus/share_plus.dart';
 
 void main() {
   runApp(const MyApp());
@@ -138,9 +139,12 @@ class _ProductDetailsState extends State<ProductDetails> {
                   tooltip: 'Fermer l\'écran',
                 ),
               ),
-              const Align(
+              Align(
                 alignment: AlignmentDirectional.topEnd,
                 child: _HeaderIcon(
+                  onPressed: () {
+                    Share.share('https://fr.openfoodfacts.org/produit/123456789');
+                  },
                   icon: AppIcons.share,
                   tooltip: 'Partager',
                 ),

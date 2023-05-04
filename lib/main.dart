@@ -862,7 +862,6 @@ class ProductNutritionalValues extends StatelessWidget {
 }
 
 //endregion
-
 //region Onglet Summary
 
 class ProductSummary extends StatelessWidget {
@@ -873,5 +872,4 @@ class ProductSummary extends StatelessWidget {
     return const Placeholder(child: Center(child: Text('Summary')));
   }
 }
-
 //endregion

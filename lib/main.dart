@@ -3,6 +3,7 @@ import 'package:flutter_app/product.dart';
 import 'package:flutter_app/colors.dart';
 import 'package:flutter_app/app_icons.dart';
 import 'package:flutter_app/res/app_images.dart';
+import 'package:flutter_svg/svg.dart';
 
 void main() {
   runApp(const MyApp());
@@ -62,8 +63,7 @@ class MyApp extends StatelessWidget {
           type: BottomNavigationBarType.fixed,
         ),
       ),
-      home: const ProductDetails(),
-    );
+      home: EmptyScreen());
   }
 }
 
@@ -128,9 +128,12 @@ class _ProductDetailsState extends State<ProductDetails> {
           body: Stack(
             children: [
               Positioned.fill(child: child),
-              const Align(
+              Align(
                 alignment: AlignmentDirectional.topStart,
                 child: _HeaderIcon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
                   icon: AppIcons.close,
                   tooltip: 'Fermer l\'écran',
                 ),
@@ -875,3 +878,78 @@ class ProductSummary extends StatelessWidget {
 }
 
 //endregion
+
+class EmptyScreen extends StatelessWidget {
+  const EmptyScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final Size size = MediaQuery.of(context).size;
+    final double width = size.width;
+    final double height = size.height;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mes scans'),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(AppIcons.barcode),
+          ),
+        ],
+      ),
+      body: Align(
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset('res/svg/ill_empty.svg'),
+            SizedBox(height: height * 0.10),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: width * 0.20),
+              child: const Text(
+                'Vous n\'avez pas encore scanné de produit',
+                textAlign: TextAlign.center,
+              ),
+            ),
+            SizedBox(height: height * 0.05),
+            TextButton(
+              onPressed: () {Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const ProductDetails(),
+                  ));},
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF080040),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 20.0,
+                  horizontal: 30.0,
+                ),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(22.0),
+                  ),
+                ),
+                backgroundColor: const Color(0xFFFBAF02),
+              ),
+              child: SizedBox(
+                width: width * 0.5,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Commencer'.toUpperCase(),
+                      ),
+                    ),
+                    const Icon(Icons.arrow_right_alt_sharp)
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

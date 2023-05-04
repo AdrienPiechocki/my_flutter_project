@@ -34,102 +34,332 @@ class MyApp extends StatelessWidget {
           ),
         ),
         textTheme: const TextTheme(
-          headline1: TextStyle(
+          displayLarge: TextStyle(
             color: AppColors.blue,
             fontSize: 22.0,
             fontWeight: FontWeight.bold,
           ),
-          headline2: TextStyle(
+          displayMedium: TextStyle(
             color: AppColors.gray2,
             fontSize: 18.0,
           ),
-          headline3: TextStyle(
+          headlineMedium: TextStyle(
             color: AppColors.gray3,
             fontSize: 17.0,
           ),
-          headline4: TextStyle(
+          headlineSmall: TextStyle(
             color: AppColors.blue,
             fontSize: 17.0,
             fontWeight: FontWeight.bold,
           ),
         ),
         dividerColor: AppColors.gray2,
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
+          selectedItemColor: AppColors.blue,
+          unselectedItemColor: AppColors.gray2,
+          type: BottomNavigationBarType.fixed,
+        ),
       ),
-      home: ProductSummary(),
+      home: const ProductDetails(),
     );
   }
 }
 
-class ProductSummary extends StatelessWidget {
-  static const double kImageHeight = 300.0;
-  final ScrollController _controller;
+class ProductContainer extends InheritedWidget {
+  final Product product;
 
-  ProductSummary({
+  const ProductContainer({
     Key? key,
-  })  : _controller = ScrollController(),
-        super(key: key);
+    required Widget child,
+    required this.product,
+  }) : super(key: key, child: child);
+
+  static ProductContainer of(BuildContext context) {
+    final ProductContainer? result =
+    context.dependOnInheritedWidgetOfExactType<ProductContainer>();
+    assert(result != null, 'No ProductContainer found in context');
+    return result!;
+  }
+
+  @override
+  bool updateShouldNotify(ProductContainer oldWidget) {
+    return product != oldWidget.product;
+  }
+}
+
+//region Ecran de détails
+class ProductDetails extends StatefulWidget {
+  const ProductDetails({Key? key}) : super(key: key);
+
+  @override
+  State<ProductDetails> createState() => _ProductDetailsState();
+}
+
+class _ProductDetailsState extends State<ProductDetails> {
+  final ScrollController _controller = ScrollController();
+  ProductDetailsTab _currentTab = ProductDetailsTab.info;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(children: [
+    final Widget child;
+
+    switch (_currentTab) {
+      case ProductDetailsTab.info:
+        child = const ProductInfo();
+        break;
+      case ProductDetailsTab.nutrition:
+        child = const ProductNutrition();
+        break;
+      case ProductDetailsTab.nutritionalValues:
+        child = const ProductNutritionalValues();
+        break;
+      case ProductDetailsTab.summary:
+        child = const ProductSummary();
+        break;
+    }
+
+    return PrimaryScrollController(
+      controller: _controller,
+      child: ProductContainer(
+        product: _generateFakeProduct(),
+        child: Scaffold(
+          body: Stack(
+            children: [
+              Positioned.fill(child: child),
+              const Align(
+                alignment: AlignmentDirectional.topStart,
+                child: _HeaderIcon(
+                  icon: AppIcons.close,
+                  tooltip: 'Fermer l\'écran',
+                ),
+              ),
+              const Align(
+                alignment: AlignmentDirectional.topEnd,
+                child: _HeaderIcon(
+                  icon: AppIcons.share,
+                  tooltip: 'Partager',
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: BottomNavigationBar(
+            onTap: (int selectedPosition) {
+              ProductDetailsTab newTab =
+              ProductDetailsTab.values[selectedPosition];
+
+              if (newTab != _currentTab) {
+                if (_controller.hasClients) {
+                  _controller.jumpTo(0.0);
+                }
+
+                setState(() {
+                  _currentTab = newTab;
+                });
+              }
+            },
+            items: ProductDetailsTab.values.map((e) {
+              String? label;
+              IconData? icon;
+
+              switch (e) {
+                case ProductDetailsTab.info:
+                  icon = AppIcons.tab_barcode;
+                  label = "Fiche";
+                  break;
+                case ProductDetailsTab.nutritionalValues:
+                  icon = AppIcons.tab_fridge;
+                  label = "Caractéristiques";
+                  break;
+                case ProductDetailsTab.nutrition:
+                  icon = AppIcons.tab_nutrition;
+                  label = "Nutrition";
+                  break;
+                case ProductDetailsTab.summary:
+                  icon = AppIcons.tab_array;
+                  label = "Tableau";
+              }
+
+              if (label == null || icon == null) {
+                throw Exception("Tab $e not implemented!");
+              }
+
+              return BottomNavigationBarItem(
+                icon: Icon(icon),
+                label: label,
+              );
+            }).toList(growable: false),
+            currentIndex: _currentTab.index,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Product _generateFakeProduct() {
+    return Product(
+      barcode: '123456789',
+      name: 'Petits pois et carottes',
+      brands: ['Cassegrain'],
+      altName: 'Petits pois & carottes à l\'étuvée avec garniture',
+      nutriScore: ProductNutriscore.A,
+      novaScore: ProductNovaScore.Group1,
+      ecoScore: ProductEcoScore.D,
+      quantity: '200g (égoutté 130g)',
+      manufacturingCountries: ['France'],
+      picture:
+      'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1610&q=80',
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+}
+
+enum ProductDetailsTab {
+  info,
+  nutrition,
+  nutritionalValues,
+  summary,
+}
+
+//endregion
+
+//region Onglet Info
+
+class ProductInfo extends StatefulWidget {
+  static const double kImageHeight = 300.0;
+
+  const ProductInfo({Key? key}) : super(key: key);
+
+  @override
+  State<ProductInfo> createState() => _ProductInfoState();
+}
+
+double _scrollProgress(BuildContext context) {
+  ScrollController? controller = PrimaryScrollController.of(context);
+  return !controller.hasClients
+      ? 0
+      : (controller.position.pixels / ProductInfo.kImageHeight).clamp(0, 1);
+}
+
+class _ProductInfoState extends State<ProductInfo> {
+  double _currentScrollProgress = 0.0;
+
+  // Quand on scroll, on redraw pour changer la couleur de l'image
+  void _onScroll() {
+    if (_currentScrollProgress != _scrollProgress(context)) {
+      setState(() {
+        _currentScrollProgress = _scrollProgress(context);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ScrollController scrollController =
+    PrimaryScrollController.of(context);
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification notification) {
+        _onScroll();
+        return false;
+      },
+      child: Stack(children: [
         Image.network(
-          'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1610&q=80',
+          ProductContainer.of(context).product.picture ?? '',
           width: double.infinity,
-          height: kImageHeight,
+          height: ProductInfo.kImageHeight,
           fit: BoxFit.cover,
-        ),
-        const Align(
-          alignment: AlignmentDirectional.topStart,
-          child: _HeaderIcon(
-            icon: AppIcons.close,
-            tooltip: 'Fermer l\'écran',
-          ),
-        ),
-        const Align(
-          alignment: AlignmentDirectional.topEnd,
-          child: _HeaderIcon(
-            icon: AppIcons.share,
-            tooltip: 'Partager',
-          ),
+          color: Colors.black.withOpacity(_currentScrollProgress),
+          colorBlendMode: BlendMode.srcATop,
         ),
         Positioned.fill(
           child: SingleChildScrollView(
-            controller: _controller,
+            controller: scrollController,
             child: Scrollbar(
-              controller: _controller,
-              isAlwaysShown: true,
+              controller: scrollController,
+              trackVisibility: true,
               child: Container(
-                margin:
-                const EdgeInsetsDirectional.only(top: kImageHeight - 30.0),
+                margin: const EdgeInsetsDirectional.only(
+                  top: ProductInfo.kImageHeight - 30.0,
+                ),
                 child: const _Body(),
               ),
             ),
           ),
-        )
+        ),
       ]),
     );
   }
 }
 
-class _HeaderIcon extends StatelessWidget {
+class _HeaderIcon extends StatefulWidget {
   final IconData icon;
   final String? tooltip;
   final VoidCallback? onPressed;
 
-  const _HeaderIcon({required this.icon, this.tooltip, this.onPressed});
+  const _HeaderIcon({
+    required this.icon,
+    this.tooltip,
+    // ignore: unused_element
+    this.onPressed,
+  });
+
+  @override
+  State<_HeaderIcon> createState() => _HeaderIconState();
+}
+
+class _HeaderIconState extends State<_HeaderIcon> {
+  double _opacity = 0.0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    PrimaryScrollController.of(context).addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    double newOpacity = _scrollProgress(context);
+
+    if (newOpacity != _opacity) {
+      setState(() {
+        _opacity = newOpacity;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: IconButton(
-        padding: const EdgeInsets.all(15.0),
-        icon: Icon(
-          icon,
-          color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Tooltip(
+            message: widget.tooltip,
+            child: InkWell(
+              onTap: widget.onPressed ?? () {},
+              customBorder: const CircleBorder(),
+              child: Ink(
+                padding: const EdgeInsets.all(15.0),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color:
+                  Theme.of(context).primaryColorLight.withOpacity(_opacity),
+                ),
+                child: Icon(
+                  widget.icon,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
         ),
-        onPressed: onPressed,
-        tooltip: tooltip,
       ),
     );
   }
@@ -181,29 +411,34 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final TextTheme textTheme = Theme.of(context).textTheme;
+    final Product product = ProductContainer.of(context).product;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Petits pois et carottes',
-          style: textTheme.headline1,
-        ),
+        if (product.name != null)
+          Text(
+            product.name!,
+            style: textTheme.displayLarge,
+          ),
         const SizedBox(
           height: 3.0,
         ),
-        Text(
-          'Cassegrain',
-          style: textTheme.headline2,
-        ),
-        const SizedBox(
-          height: 8.0,
-        ),
-        Text(
-          'Petits pois & carottes à l\'étuvée avec garniture',
-          style: textTheme.headline3,
-        ),
+        if (product.brands != null) ...[
+          Text(
+            'Cassegrain',
+            style: textTheme.displayMedium,
+          ),
+          const SizedBox(
+            height: 8.0,
+          ),
+        ],
+        if (product.altName != null)
+          Text(
+            product.altName!,
+            style: textTheme.headlineMedium,
+          ),
       ],
     );
   }
@@ -294,7 +529,7 @@ class _Nutriscore extends StatelessWidget {
       children: [
         Text(
           'Nutri-Score',
-          style: Theme.of(context).textTheme.headline4,
+          style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(
           height: 5.0,
@@ -341,7 +576,7 @@ class _NovaGroup extends StatelessWidget {
       children: [
         Text(
           'Groupe Nova',
-          style: Theme.of(context).textTheme.headline4?.copyWith(
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontSize: 16.0,
           ),
         ),
@@ -390,7 +625,7 @@ class _EcoScore extends StatelessWidget {
       children: [
         Text(
           'EcoScore',
-          style: Theme.of(context).textTheme.headline4,
+          style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(
           height: 5.0,
@@ -599,3 +834,44 @@ class _ProductBubble extends StatelessWidget {
 }
 
 enum _ProductBubbleValue { on, off }
+
+//endregion
+
+// region Onglet Nutrition
+
+class ProductNutrition extends StatelessWidget {
+  const ProductNutrition({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const Placeholder(child: Center(child: Text('Nutrition')));
+  }
+}
+
+//endregion
+
+//region Onglet Nutritional Values
+
+class ProductNutritionalValues extends StatelessWidget {
+  const ProductNutritionalValues({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const Placeholder(child: Center(child: Text('Nutritional values')));
+  }
+}
+
+//endregion
+
+//region Onglet Summary
+
+class ProductSummary extends StatelessWidget {
+  const ProductSummary({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const Placeholder(child: Center(child: Text('Summary')));
+  }
+}
+
+//endregion
